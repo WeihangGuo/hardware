@@ -5,6 +5,7 @@ import numpy as np
 import pyrealsense2 as rs
 import cv2
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,17 @@ class AbstractCamera(ABC):
         pass
 
 class RGBCamera(AbstractCamera):
-    def __init__(self, device_id, width=640, height=480, fps=6):
+    @dataclass
+    class Intrinsics:
+        fx: float
+        fy: float
+        ppx: float
+        ppy: float
+    
+    def __init__(self, device_id, intrinsics=None, width=640, height=480, fps=6):
         super().__init__(device_id, width, height, fps)
         self.device = None
+        self.intrinsics = intrinsics # Intrinsics should be a dictionary with keys: fx, fy, ppx, ppy
 
     def connect(self):
         self.device = cv2.VideoCapture(self.device_id)
@@ -51,7 +60,8 @@ class RGBCamera(AbstractCamera):
         rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         # Return the RGB image
         return {
-            'rgb': rgb_image
+            'rgb': rgb_image, 
+            'aligned_depth': None,  # No depth image for RGB camera
         }
     
     def plot_image_bundle(self):
