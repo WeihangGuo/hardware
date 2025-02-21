@@ -3,11 +3,66 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pyrealsense2 as rs
+import cv2
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
+class AbstractCamera(ABC):
+    def __init__(self, device_id, width=640, height=480, fps=6):
+        self.device_id = device_id
+        self.width = width
+        self.height = height
+        self.fps = fps
 
-class RealSenseCamera:
+    @abstractmethod
+    def connect(self):
+        """Establish a connection with the camera."""
+        pass
+
+    @abstractmethod
+    def get_image_bundle(self):
+        """Capture and return an image bundle."""
+        pass
+
+    @abstractmethod
+    def plot_image_bundle(self):
+        """Display the image bundle."""
+        pass
+
+class RGBCamera(AbstractCamera):
+    def __init__(self, device_id, width=640, height=480, fps=6):
+        super().__init__(device_id, width, height, fps)
+        self.device = None
+
+    def connect(self):
+        self.device = cv2.VideoCapture(self.device_id)
+        if not self.device.isOpened():
+            raise Exception(f"Could not open video device {self.device_id}")
+        
+        self.device.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.device.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        self.device.set(cv2.CAP_PROP_FPS, self.fps)
+    
+    def get_image_bundle(self):
+        ret, frame = self.device.read()
+        if not ret:
+            raise Exception("Failed to capture frame from camera")
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Return the RGB image
+        return {
+            'rgb': rgb_image
+        }
+    
+    def plot_image_bundle(self):
+        images = self.get_image_bundle()
+        rgb = images['rgb']
+        plt.imshow(rgb)
+        plt.title('RGB Image')
+        plt.axis('off')
+        plt.show()
+
+class RealSenseCamera(AbstractCamera):
     def __init__(self,
                  device_id,
                  width=640,
